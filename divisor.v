@@ -12,7 +12,7 @@ Kinda bad since its pretty long and the number of cycles can be improved. Howeve
 */
 
 
-module divisor #(parameter WIDTH=4) (A_IN,B_IN,Q_OUT,R_OUT,STATE_OUT,NEXT_OUT,clk,rst,en,A_REG,B_REG,COUNT_OUT,COUNT_MAX);
+module divisor #(parameter WIDTH=4) (A_IN,B_IN,Q_OUT,R_OUT,STATE_OUT,NEXT_OUT,clk,rst,en,A_REG,B_REG,COUNT_OUT,COUNT_MAX,valid);
   // unsigned A:B = D+R
   input [WIDTH-1:0] A_IN;
   input [WIDTH-1:0] B_IN;
@@ -25,7 +25,9 @@ module divisor #(parameter WIDTH=4) (A_IN,B_IN,Q_OUT,R_OUT,STATE_OUT,NEXT_OUT,cl
   output [2:0] NEXT_OUT;
   output [WIDTH-1:0] COUNT_OUT;
   output COUNT_MAX;
+  output valid;
   
+  reg valid_r;
   reg [WIDTH-1:0] A; // copy of A
   reg [WIDTH-1:0] B; // copy of B
   reg [WIDTH-1:0] Q; // placeholder for D (quotient)
@@ -39,12 +41,11 @@ module divisor #(parameter WIDTH=4) (A_IN,B_IN,Q_OUT,R_OUT,STATE_OUT,NEXT_OUT,cl
   assign R_OUT = R;
   assign A_REG = A;
   assign B_REG = B;
-  
+  assign valid = valid_r;
   assign STATE_OUT = cur_state;
   assign NEXT_OUT = next_state;
   assign COUNT_OUT =counter;
-  assign COUNT_MAX = (counter==WIDTH+1) ? 1:0;
-  
+  assign COUNT_MAX = (counter>=WIDTH) ? 1:0;
   localparam IDLE = 3'd0;
   localparam ZERO = 3'd1;
   localparam LOAD = 3'd2;
@@ -107,6 +108,8 @@ module divisor #(parameter WIDTH=4) (A_IN,B_IN,Q_OUT,R_OUT,STATE_OUT,NEXT_OUT,cl
         B<=B;
         Q<=Q;
         R<=R;
+        counter<=1'd0;
+        valid_r <=1'd0;
       end
       
       ZERO:begin
@@ -114,6 +117,7 @@ module divisor #(parameter WIDTH=4) (A_IN,B_IN,Q_OUT,R_OUT,STATE_OUT,NEXT_OUT,cl
         B<=0;
         Q<=0;
         R<=0;
+        valid_r <=1'd0;
       end
       
       LOAD:begin
@@ -123,12 +127,12 @@ module divisor #(parameter WIDTH=4) (A_IN,B_IN,Q_OUT,R_OUT,STATE_OUT,NEXT_OUT,cl
       end
       
       DIV:begin
-        counter<=counter+1;
-        if(R>=B)begin
+        if((R>=B)& !COUNT_MAX)begin
           R<=R-B;
-          Q[0]<=1'b1;
+          Q<= Q + 1'b1;
         end
-        else begin
+        else if ((R<B) & !COUNT_MAX) begin
+          counter<=counter+1;
           R<={R[WIDTH-2:0],A[WIDTH-1]};
           A<=A<<1;
           Q<=Q<<1;
@@ -137,9 +141,16 @@ module divisor #(parameter WIDTH=4) (A_IN,B_IN,Q_OUT,R_OUT,STATE_OUT,NEXT_OUT,cl
       end
       
       FINISH:begin
+        if(R >= B) begin
+          	R<=R-B;
+          	Q<= Q + 1'b1;
+        end
+       	else begin
         	Q<=Q;
       		R<=R;
-         	counter<=1'd0;
+        end
+        counter<=1'd0;
+        valid_r <= 1;
       end
       
     endcase
