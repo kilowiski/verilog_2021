@@ -61,7 +61,7 @@ module umultiplier #(parameter WIDTH=4) (
       B1<=B;
     end
     else if(busy)begin
-      if (i == WIDTH) begin  // we're done
+      if (i > WIDTH) begin  // we're done
         valid<=1;
         busy<=0;
         i<=0;
