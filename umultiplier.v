@@ -39,17 +39,8 @@ module umultiplier #(parameter WIDTH=4) (
   assign i_out = i;
   assign A1_out=A1;
   assign B1_out=B1;
-  assign mult_out=mult;
-  
-  always @(*)begin
-    if(mult==1'b1)begin
-      inter=A1;
-    end
-    else if (mult==1'b0) begin
-      inter=0;
-    end
-  end
-  
+  assign mult_out=0;
+   
   always @(posedge clk)begin
     if(start)begin
       i<=0;
@@ -61,16 +52,17 @@ module umultiplier #(parameter WIDTH=4) (
       B1<=B;
     end
     else if(busy)begin
-      if (i > WIDTH) begin  // we're done
+      if (i == WIDTH) begin  // we're done
         valid<=1;
         busy<=0;
         i<=0;
       end 
       else begin
-        mult<=B1[0];
-      	B1<=B1>>1;
-        accum<=accum+(inter<<i-1);//multiplication starts at i=1, so i=0 is loading
-      	i<=i+1;
+        mult<=B1[i];
+        if (B1[i]) begin
+          accum <= accum + (A1 << i);
+        end
+        	i<=i+1;
       end
     end  
   end
